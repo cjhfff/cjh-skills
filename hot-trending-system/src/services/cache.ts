@@ -1,165 +1,111 @@
-// 内存缓存服务 - 带 TTL 支持和 LRU  eviction
+/**
+ * 内存缓存服务 - 带容量限制
+ */
 
 interface CacheEntry<T> {
   value: T;
-  expiry: number;
-  /** Last access timestamp for LRU tracking */
-  lastAccessed: number;
+  expiresAt: number;
 }
 
-/**
- * Cache configuration
- */
-const CACHE_CONFIG = {
-  /** Maximum number of entries allowed in cache */
-  maxSize: 1000,
-  /** Default TTL in milliseconds (1 hour) */
-  defaultTTL: 3600000,
-  /** Cleanup interval in milliseconds (1 minute) */
-  cleanupInterval: 60000,
-};
-
-class CacheService {
-  private cache: Map<string, CacheEntry<unknown>>;
-  private defaultTTL: number;
+class Cache {
+  private cache: Map<string, CacheEntry<any>>;
   private maxSize: number;
-  private hitCount: number = 0;
-  private missCount: number = 0;
+  private cleanupInterval: NodeJS.Timeout;
 
-  constructor(defaultTTL: number = CACHE_CONFIG.defaultTTL, maxSize: number = CACHE_CONFIG.maxSize) {
+  constructor(maxSize: number = 1000) {
     this.cache = new Map();
-    this.defaultTTL = defaultTTL;
     this.maxSize = maxSize;
-    
-    // 定期清理过期缓存和 LRU eviction
-    setInterval(() => this.cleanup(), CACHE_CONFIG.cleanupInterval);
+    // 每 60 秒清理过期条目
+    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
   }
 
   /**
-   * Evicts oldest entries when cache exceeds maxSize (LRU-like behavior)
-   * Removes approximately 10% of entries when full
+   * 获取缓存值
    */
-  private evictIfNeeded(): void {
-    if (this.cache.size >= this.maxSize) {
-      // Sort by lastAccessed time and remove oldest 10%
-      const entries = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-      
-      const evictCount = Math.ceil(this.maxSize * 0.1);
-      const toEvict = entries.slice(0, evictCount);
-      
-      for (const [key] of toEvict) {
-        this.cache.delete(key);
-      }
-      
-      console.log(`[Cache] Evicted ${evictCount} old entries (LRU), current size: ${this.cache.size}`);
-    }
-  }
-
-  // 设置缓存
-  set<T>(key: string, value: T, ttl?: number): void {
-    const expiry = Date.now() + (ttl || this.defaultTTL);
-    
-    // Evict old entries if needed before adding new one
-    this.evictIfNeeded();
-    
-    this.cache.set(key, { 
-      value, 
-      expiry,
-      lastAccessed: Date.now(),
-    });
-  }
-
-  // 获取缓存
-  get<T>(key: string): T | null {
+  get<T>(key: string): T | undefined {
     const entry = this.cache.get(key);
     if (!entry) {
-      this.missCount++;
-      return null;
+      return undefined;
     }
-    
-    if (Date.now() > entry.expiry) {
+
+    // 检查是否过期
+    if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
-      this.missCount++;
-      return null;
+      return undefined;
     }
-    
-    // Update last accessed time for LRU tracking
-    entry.lastAccessed = Date.now();
-    this.hitCount++;
-    
+
     return entry.value as T;
   }
 
-  // 删除缓存
-  delete(key: string): boolean {
-    return this.cache.delete(key);
-  }
-
-  // 检查缓存是否存在
-  has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) return false;
-    
-    if (Date.now() > entry.expiry) {
-      this.cache.delete(key);
-      return false;
+  /**
+   * 设置缓存值
+   * @param key 缓存键
+   * @param value 缓存值
+   * @param ttl 过期时间（毫秒），默认 30 分钟
+   */
+  set<T>(key: string, value: T, ttl: number = 1800000): void {
+    // 如果达到容量且是新增 key，删除最旧的条目
+    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
     }
-    
-    return true;
-  }
 
-  // 清理过期缓存
-  private cleanup(): void {
-    const now = Date.now();
-    let removedCount = 0;
-    
-    for (const [key, entry] of this.cache.entries()) {
-      if (now > entry.expiry) {
-        this.cache.delete(key);
-        removedCount++;
-      }
-    }
-    
-    if (removedCount > 0) {
-      console.log(`[Cache] Cleaned up ${removedCount} expired entries`);
-    }
-  }
-
-  // 获取缓存统计
-  getStats(): { 
-    size: number; 
-    hits: number; 
-    misses: number;
-    hitRate: number;
-    maxSize: number;
-  } {
-    const total = this.hitCount + this.missCount;
-    const hitRate = total > 0 ? (this.hitCount / total) * 100 : 0;
-    
-    return { 
-      size: this.cache.size, 
-      hits: this.hitCount,
-      misses: this.missCount,
-      hitRate: Math.round(hitRate * 100) / 100,
-      maxSize: this.maxSize,
+    const entry: CacheEntry<T> = {
+      value,
+      expiresAt: Date.now() + ttl,
     };
+
+    this.cache.set(key, entry);
   }
 
-  // 清空所有缓存
+  /**
+   * 删除缓存值
+   */
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+
+  /**
+   * 清空所有缓存
+   */
   clear(): void {
     this.cache.clear();
-    this.hitCount = 0;
-    this.missCount = 0;
-    console.log('[Cache] All entries cleared');
+  }
+
+  /**
+   * 获取当前缓存大小
+   */
+  size(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * 清理过期条目
+   */
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiresAt) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * 销毁缓存实例（清理定时器）
+   */
+  destroy(): void {
+    clearInterval(this.cleanupInterval);
+    this.clear();
   }
 }
 
-// 导出单例
-const cache = new CacheService(CACHE_CONFIG.defaultTTL, CACHE_CONFIG.maxSize);
-export default cache;
+// 创建单例实例
+const cache = new Cache(1000);
 
-// 辅助函数：生成缓存 key
-export function makeCacheKey(prefix: string, ...args: string[]): string {
-  return `${prefix}:${args.join(':')}`;
+// 辅助函数：创建缓存键
+export function makeCacheKey(type: string, keyword: string): string {
+  return `${type}:${keyword.toLowerCase().trim()}`;
 }
+
+export default cache;
