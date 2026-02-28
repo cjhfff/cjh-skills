@@ -1,0 +1,34 @@
+#!/bin/zsh
+# claude-ark - 通过火山引擎 Coding Plan API 调用 Claude Code
+# 用法: claude-ark [model] "prompt"
+# 示例: claude-ark kimi-k2.5 "帮我写一个 Python 爬虫"
+#       claude-ark "分析这段代码"  (默认用 doubao-seed-2.0-code)
+
+MODEL="${1:-doubao-seed-2.0-code}"
+PROMPT=""
+
+# 如果第一个参数不像模型名，当作 prompt
+case "$MODEL" in
+  kimi-k2.5|kimi-k2-thinking|deepseek-v3.2|glm-4.7|doubao-seed-code|doubao-seed-2.0-code)
+    PROMPT="${@:2}"
+    ;;
+  *)
+    PROMPT="$@"
+    MODEL="doubao-seed-2.0-code"
+    ;;
+esac
+
+if [ -z "$PROMPT" ]; then
+  echo "用法: claude-ark [model] \"prompt\""
+  echo "模型: kimi-k2.5, kimi-k2-thinking, deepseek-v3.2, glm-4.7, doubao-seed-code, doubao-seed-2.0-code"
+  exit 1
+fi
+
+exec env \
+  ANTHROPIC_BASE_URL="https://ark.cn-beijing.volces.com/api/coding" \
+  ANTHROPIC_AUTH_TOKEN="eeac621d-d311-4686-8771-d5623e9457c5" \
+  ANTHROPIC_API_KEY="" \
+  ANTHROPIC_MODEL="$MODEL" \
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1" \
+  DISABLE_PROMPT_CACHING="1" \
+  /Users/yangyue/.local/bin/claude -p --model "$MODEL" "$PROMPT"

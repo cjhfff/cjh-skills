@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas 测试页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .success-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            margin: 20px 0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .info-box {
+            background: #f0f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .info-box h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .features {
+            list-style: none;
+            margin: 20px 0;
+        }
+        
+        .features li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            color: #6b7280;
+        }
+        
+        #clock {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Canvas HTML 测试</h1>
+        
+        <div style="text-align: center;">
+            <span class="success-badge">✅ 显示成功！</span>
+        </div>
+        
+        <div class="info-box">
+            <h2>📋 测试信息</h2>
+            <p><strong>测试时间：</strong><span id="clock"></span></p>
+            <p><strong>页面标题：</strong>Canvas 测试页面</p>
+            <p><strong>加载方式：</strong>HTTP 服务器 (localhost:8888)</p>
+            <p><strong>浏览器引擎：</strong>Canvas (A2UI)</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="loadTime">0</div>
+                <div class="label">加载时间 (秒)</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">HTML5</div>
+                <div class="label">技术标准</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">CSS3</div>
+                <div class="label">样式版本</div>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h2>✨ 功能验证</h2>
+            <ul class="features">
+                <li>HTML 结构渲染</li>
+                <li>CSS 样式应用</li>
+                <li>JavaScript 执行</li>
+                <li>渐变背景效果</li>
+                <li>动画效果</li>
+                <li>响应式布局</li>
+                <li>中文字体显示</li>
+                <li>实时时钟更新</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>🚀 OpenClaw Canvas HTML 显示测试</p>
+            <p>如果您能看到这个页面，说明所有功能都正常工作！</p>
+        </div>
+    </div>
+    
+    <script>
+        // 显示实时时钟
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('clock').textContent = timeString;
+        }
+        
+        // 计算加载时间
+        window.addEventListener('load', function() {
+            const loadTime = (performance.now() / 1000).toFixed(2);
+            document.getElementById('loadTime').textContent = loadTime;
+        });
+        
+        // 每秒更新时钟
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        console.log('Canvas 测试页面加载成功！');
+    </script>
+</body>
+</html>

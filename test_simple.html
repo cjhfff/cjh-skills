@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试</title>
+</head>
+<body style="background: white; padding: 50px; font-family: Arial;">
+    <h1 style="color: blue; font-size: 48px;">测试页面</h1>
+    <p style="font-size: 24px;">如果您能看到这个，说明 Canvas 可以显示 HTML！</p>
+    <div style="background: #f0f0f0; padding: 20px; margin-top: 20px;">
+        <p>时间：<span id="time"></span></p>
+    </div>
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        document.body.style.backgroundColor = '#ffffcc';
+    </script>
+</body>
+</html>

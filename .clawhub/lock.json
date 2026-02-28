@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "skills": {
+    "tavily-search": {
+      "version": "1.0.0",
+      "installedAt": 1770947529401
+    },
+    "exa-web-search-free": {
+      "version": "1.0.1",
+      "installedAt": 1770947549060
+    },
+    "cognitive-memory": {
+      "version": "1.0.8",
+      "installedAt": 1770949409034
+    },
+    "gitload": {
+      "version": "1.0.0",
+      "installedAt": 1770949427901
+    },
+    "get-tldr": {
+      "version": "1.0.0",
+      "installedAt": 1770949482162
+    },
+    "evolver": {
+      "version": "1.10.8",
+      "installedAt": 1770949491151
+    },
+    "pndr": {
+      "version": "1.0.20260202",
+      "installedAt": 1770949495736
+    },
+    "web-deploy-github": {
+      "version": "1.0.0",
+      "installedAt": 1770949515283
+    },
+    "task-status": {
+      "version": "1.0.0",
+      "installedAt": 1770949524887
+    },
+    "cellcog": {
+      "version": "1.0.15",
+      "installedAt": 1770949535790
+    },
+    "crustafarian": {
+      "version": "1.0.0",
+      "installedAt": 1770949541325
+    }
+  }
+}

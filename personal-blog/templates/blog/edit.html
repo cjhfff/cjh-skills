@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Post{% endblock %}
+
+{% block head %}
+<!-- SimpleMDE Markdown Editor -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> Edit Post</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('blog.edit', post_id=post.id) }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                        {% for error in form.title.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.content.label(class="form-label") }}
+                        {{ form.content(class="form-control" + (" is-invalid" if form.content.errors else ""), rows=15) }}
+                        {% for error in form.content.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                        <div class="form-text">Supports Markdown formatting.</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.category_id.label(class="form-label") }}
+                            {{ form.category_id(class="form-select" + (" is-invalid" if form.category_id.errors else "")) }}
+                            {% for error in form.category_id.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.tags.label(class="form-label") }}
+                            {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else "")) }}
+                            {% for error in form.tags.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                            <div class="form-text">Separate tags with commas (e.g., python, flask, web)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 form-check">
+                        {{ form.published(class="form-check-input") }}
+                        {{ form.published.label(class="form-check-label") }}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('blog.view_post', post_id=post.id) }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- SimpleMDE Markdown Editor -->
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+<script>
+    // Initialize SimpleMDE editor
+    const simplemde = new SimpleMDE({
+        element: document.getElementById("content"),
+        spellChecker: false,
+        autosave: {
+            enabled: true,
+            uniqueId: "post-edit-{{ post.id }}",
+            delay: 1000,
+        },
+        placeholder: "Write your post here...",
+        status: false,
+        toolbar: [
+            "bold", "italic", "heading", "|",
+            "quote", "unordered-list", "ordered-list", "|",
+            "link", "image", "|",
+            "preview", "side-by-side", "fullscreen", "|",
+            "guide"
+        ]
+    });
+</script>
+{% endblock %}

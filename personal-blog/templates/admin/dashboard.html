@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h1>
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total Users</h6>
+                            <h2 class="mb-0">{{ stats.total_users }}</h2>
+                        </div>
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total Posts</h6>
+                            <h2 class="mb-0">{{ stats.total_posts }}</h2>
+                        </div>
+                        <i class="bi bi-journal-text" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Categories</h6>
+                            <h2 class="mb-0">{{ stats.total_categories }}</h2>
+                        </div>
+                        <i class="bi bi-folder" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Comments</h6>
+                            <h2 class="mb-0">{{ stats.total_comments }}</h2>
+                        </div>
+                        <i class="bi bi-chat-left-text" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Posts -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Posts</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Author</th>
+                                    <th>Created</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for post in stats.recent_posts %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('blog.view_post', post_id=post.id) }}" class="text-decoration-none">
+                                            {{ post.title[:50] }}{% if post.title|length > 50 %}...{% endif %}
+                                        </a>
+                                    </td>
+                                    <td>{{ post.author.username }}</td>
+                                    <td>{{ post.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if post.published %}
+                                        <span class="badge bg-success">Published</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Draft</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('blog.view_post', post_id=post.id) }}" class="btn btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('blog.edit', post_id=post.id) }}" class="btn btn-outline-secondary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end">
+                        <a href="{{ url_for('admin.posts') }}" class="btn btn-outline-primary">View All Posts</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Users -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-plus"></i> Recent Users</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for user in stats.recent_users %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ user.username }}</h6>
+                                <small class="text-muted">{{ user.created_at.strftime('%Y-%m-%d') }}</small>
+                            </div>
+                            <p class="mb-1 text-muted">{{ user.email }}</p>
+                            <small>
+                                {% if user.is_admin %}
+                                <span class="badge bg-danger">Admin</span>
+                                {% endif %}
+                                <span class="badge bg-secondary">{{ user.posts.count() }} posts</span>
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-end mt-3">
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">View All Users</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('blog.create') }}" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-circle"></i> Create Post
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-people"></i> Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.posts') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-journal-text"></i> Manage Posts
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.categories') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-folder"></i> Manage Categories
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

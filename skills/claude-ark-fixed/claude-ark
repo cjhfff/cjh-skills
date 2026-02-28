@@ -1,0 +1,98 @@
+#!/usr/bin/env node
+/**
+ * claude-ark - 火山 Ark API 客户端 (Fixed)
+ */
+
+const https = require('https');
+
+const ARK_API_KEY = process.env.ARK_API_KEY || 'eeac621d-d311-4686-8771-d5623e9457c5';
+const ARK_HOST = 'ark.cn-beijing.volces.com';
+const ARK_PATH = '/api/coding/v3/chat/completions';
+
+const MODELS = {
+  'kimi': 'kimi-k2.5',
+  'kimi-thinking': 'kimi-k2-thinking',
+  'deepseek': 'deepseek-v3.2',
+  'glm': 'glm-4.7',
+  'doubao': 'doubao-seed-code'
+};
+
+function showHelp() {
+  console.log(`Usage: claude-ark [model] "prompt"
+Models: kimi, kimi-thinking, deepseek, glm, doubao (default)`);
+}
+
+async function callAPI(modelId, prompt) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      model: modelId,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2000
+    });
+
+    const options = {
+      hostname: ARK_HOST,
+      path: ARK_PATH,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ARK_API_KEY}`,
+        'X-Ark-Coding-Plan': 'true'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.choices?.[0]?.message?.content) {
+            resolve(parsed.choices[0].message.content);
+          } else {
+            reject(new Error(parsed.error?.message || 'API error'));
+          }
+        } catch (e) {
+          reject(new Error(`Parse error: ${e.message}`));
+        }
+      });
+    });
+
+    req.on('error', e => reject(new Error(e.message)));
+    req.write(data);
+    req.end();
+  });
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args[0] === '-h') {
+    showHelp();
+    return;
+  }
+
+  let model = 'doubao';
+  let prompt = '';
+
+  if (MODELS[args[0]]) {
+    model = args[0];
+    prompt = args.slice(1).join(' ');
+  } else {
+    prompt = args.join(' ');
+  }
+
+  if (!prompt) {
+    console.error('Error: no prompt');
+    return;
+  }
+
+  try {
+    const response = await callAPI(MODELS[model], prompt);
+    console.log(response);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+main();

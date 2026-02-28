@@ -1,0 +1,12 @@
+#!/bin/zsh
+# claude-official - 通过 Anthropic 官方 API 调用 Claude Code
+# 用法: claude-official "prompt"
+# 注意：使用官方 API 会消耗订阅额度
+
+if [ -z "$1" ]; then
+  echo "用法: claude-official \"prompt\""
+  exit 1
+fi
+
+exec env -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL -u ANTHROPIC_MODEL \
+  /Users/yangyue/.local/bin/claude -p --dangerously-skip-permissions "$@"
