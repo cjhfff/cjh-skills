@@ -335,7 +335,7 @@ async function fetchSemanticScholar(keyword: string): Promise<SearchResult[]> {
     }
   );
   
-  return (response.data.data?.data || []).map((paper: SemanticScholarPaper) => ({
+  return (response.data?.data || []).map((paper: SemanticScholarPaper) => ({
     title: paper.title || '',
     url: paper.externalIds?.DOI 
       ? `https://doi.org/${paper.externalIds.DOI}`
