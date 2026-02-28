@@ -62,6 +62,13 @@ export interface ArxivEntry {
   author?: Array<{ name?: string }>;
 }
 
+/** arXiv API 响应接口 */
+export interface ArxivResponse {
+  feed?: {
+    entry?: ArxivEntry | ArxivEntry[];
+  };
+}
+
 /** OpenAlex API 响应中的 work 项 */
 export interface OpenAlexWork {
   id?: string;
@@ -76,6 +83,14 @@ export interface OpenAlexWork {
   }>;
 }
 
+/** OpenAlex API 响应接口 */
+export interface OpenAlexResponse {
+  results?: OpenAlexWork[];
+  meta?: {
+    count?: number;
+  };
+}
+
 /** NewsAPI API 响应中的 article 项 */
 export interface NewsApiArticle {
   source?: { id?: string; name?: string };
@@ -86,6 +101,26 @@ export interface NewsApiArticle {
   urlToImage?: string;
   publishedAt?: string;
   content?: string;
+}
+
+/** NewsAPI API 响应接口 */
+export interface NewsApiResponse {
+  status?: string;
+  totalResults?: number;
+  articles?: NewsApiArticle[];
+}
+
+/** Fallback API 接口 */
+interface FallbackApi {
+  name: string;
+  search: (keyword: string) => Promise<SearchResult[]>;
+}
+
+/** Fallback API 响应接口 */
+interface FallbackResponse {
+  data: {
+    data: SemanticScholarPaper[];
+  };
 }
 
 // ============ Serper 搜索 (热点新闻) ============
@@ -115,7 +150,7 @@ export async function searchNews(keyword: string): Promise<SearchResponse> {
   await throttleSerper();
   
   try {
-    const response = await axios.post<{ organic: SerperOrganicItem[] }>(
+    const response = await axios.post<SerperResponse>(
       SERPER_API_URL,
       {
         q: keyword,
@@ -219,11 +254,11 @@ function isRateLimitError(error: unknown): boolean {
 }
 
 // 备用学术 API
-const FALLBACK_APIS = [
+const FALLBACK_APIS: FallbackApi[] = [
   {
     name: 'arXiv',
     search: async (keyword: string): Promise<SearchResult[]> => {
-      const response = await axios.get<{ feed?: { entry?: ArxivEntry | ArxivEntry[] } }>(
+      const response = await axios.get<ArxivResponse>(
         'http://export.arxiv.org/api/query',
         {
           params: {
@@ -238,46 +273,20 @@ const FALLBACK_APIS = [
       
       // 解析 XML 响应
       const entries = response.data.feed?.entry || [];
-      const entriesArray = Array.isArray(entries) ? entries : [entries];
+      const entriesArray: ArxivEntry[] = Array.isArray(entries) ? entries : [entries];
       
       const results: SearchResult[] = entriesArray
-        .filter((e): e is ArxivEntry => e !== undefined && e !== null)
+        .filter((e: ArxivEntry | null | undefined): e is ArxivEntry => e !== undefined && e !== null)
         .map((item: ArxivEntry) => ({
           title: typeof item.title === 'object' ? (item.title._ || '') : (item.title || ''),
-          url: typeof item.id === 'object' ? (item.id._ || item.id || '') : (item.id || ''),
-          snippet: typeof item.summary === 'object' ? (item.summary._ || item.summary || '') : (item.summary || ''),
-          publishedDate: typeof item.published === 'object' ? (item.published._ || item.published || '') : (item.published || ''),
+          url: typeof item.id === 'object' ? (item.id._ || '') : (item.id || ''),
+          snippet: typeof item.summary === 'object' ? (item.summary._ || '') : (item.summary || ''),
+          publishedDate: typeof item.published === 'object' ? (item.published._ || '') : (item.published || ''),
           source: 'arXiv',
         }));
       
       return results;
-    }
-  },
-  {
-    name: 'OpenAlex',
-    search: async (keyword: string): Promise<SearchResult[]> => {
-      const response = await axios.get<{ results: OpenAlexWork[] }>(
-        'https://api.openalex.org/works',
-        {
-          params: {
-            search: keyword,
-            per_page: 20,
-            select: 'id,title,display_name,publication_year,abstract,authorships,cited_by_count,doi',
-          },
-          timeout: 15000,
-        }
-      );
-      
-      const results: SearchResult[] = (response.data.results || []).map((item: OpenAlexWork) => ({
-        title: item.display_name || item.title || '',
-        url: item.doi ? `https://doi.org/${item.doi}` : item.id || '',
-        snippet: item.abstract ? item.abstract.substring(0, 300) : '',
-        publishedDate: item.publication_year?.toString(),
-        source: `Citations: ${item.cited_by_count || 0}`,
-      }));
-      
-      return results;
-    }
+    },
   },
 ];
 
@@ -290,32 +299,9 @@ export async function searchPapers(keyword: string): Promise<SearchResponse> {
     return cached;
   }
 
-  await throttleSemantic();
-
-  // 尝试 Semantic Scholar
   try {
-    const response = await fetchWithRetry<{ data: { data: SemanticScholarPaper[] } }>(async () => {
-      return axios.get('https://api.semanticscholar.org/graph/v1/paper/search', {
-        params: {
-          query: keyword,
-          limit: 20,
-          fields: 'title,abstract,year,authors,citationCount,url,externalIds',
-        },
-        timeout: 15000,
-      });
-    });
-
-    const results: SearchResult[] = (response.data.data || []).map((item: SemanticScholarPaper) => ({
-      title: item.title || '',
-      url: item.url || (item.externalIds?.DOI ? `https://doi.org/${item.externalIds.DOI}` : ''),
-      snippet: item.abstract?.substring(0, 300) || '',
-      publishedDate: item.year?.toString(),
-      source: item.authors?.[0]?.name 
-        ? `Authors: ${item.authors[0].name}${item.authors.length > 1 ? ` +${item.authors.length - 1}` : ''}` 
-        : '',
-      citationCount: item.citationCount,
-    }));
-
+    const results = await fetchWithRetry(() => fetchSemanticScholar(keyword));
+    
     const searchResponse: SearchResponse = {
       results,
       query: keyword,
@@ -328,95 +314,57 @@ export async function searchPapers(keyword: string): Promise<SearchResponse> {
     
     return searchResponse;
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Semantic Scholar error:', errorMessage);
-    
-    // 尝试备用 API
-    for (const fallback of FALLBACK_APIS) {
-      try {
-        console.log(`[Fallback] Trying ${fallback.name}...`);
-        const results = await fallback.search(keyword);
-        
-        const searchResponse: SearchResponse = {
-          results,
-          query: keyword,
-          timestamp: new Date().toISOString(),
-          type: 'papers',
-        };
-        
-        // 缓存备用结果 (30分钟)
-        cache.set(cacheKey, searchResponse, 1800000);
-        
-        return searchResponse;
-      } catch (fallbackError: unknown) {
-        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown error';
-        console.error(`${fallback.name} error:`, fallbackMessage);
-        continue;
-      }
+    console.error('All paper search methods failed:', error);
+    throw error;
+  }
+}
+
+// Semantic Scholar API 调用
+async function fetchSemanticScholar(keyword: string): Promise<SearchResult[]> {
+  await throttleSemantic();
+  
+  const response = await axios.get<FallbackResponse>(
+    'https://api.semanticscholar.org/graph/v1/paper/search',
+    {
+      params: {
+        query: keyword,
+        fields: 'title,abstract,year,authors,citationCount,externalIds',
+        limit: 20,
+      },
+      timeout: 15000,
     }
-    
-    // 所有 API 都失败
-    throw new Error('All academic search APIs failed. Please try again later.');
-  }
+  );
+  
+  return (response.data.data?.data || []).map((paper: SemanticScholarPaper) => ({
+    title: paper.title || '',
+    url: paper.externalIds?.DOI 
+      ? `https://doi.org/${paper.externalIds.DOI}`
+      : `https://www.semanticscholar.org/paper/${paper.paperId}`,
+    snippet: paper.abstract || '',
+    publishedDate: paper.year?.toString(),
+    source: paper.authors?.map((a) => a.name).join(', ') || 'Unknown',
+    citationCount: paper.citationCount,
+  }));
 }
 
-// ============ 智能搜索 - 根据意图路由 ============
-
-export async function smartSearch(keyword: string): Promise<{
-  news: SearchResponse;
-  papers: SearchResponse;
-  intent: SearchIntent;
-}> {
-  // 检测意图
+// 智能搜索 - 自动检测意图并选择搜索类型
+export async function smartSearch(keyword: string): Promise<SearchResponse & { intent: SearchIntent }> {
   const intent = detectIntent(keyword);
-  console.log(`[Intent] "${keyword}" -> ${intent}`);
-
-  // 根据意图决定搜索策略
-  const promises: Promise<SearchResponse>[] = [];
   
-  if (intent === 'news' || intent === 'both') {
-    promises.push(
-      searchNews(keyword).catch(() => ({
-        results: [],
-        query: keyword,
-        timestamp: new Date().toISOString(),
-        type: 'news' as const
-      }))
-    );
+  if (intent === 'papers') {
+    const results = await searchPapers(keyword);
+    return { ...results, intent };
+  } else {
+    // 默认搜索新闻
+    const results = await searchNews(keyword);
+    return { ...results, intent };
   }
-  
-  if (intent === 'papers' || intent === 'both') {
-    promises.push(
-      searchPapers(keyword).catch(() => ({
-        results: [],
-        query: keyword,
-        timestamp: new Date().toISOString(),
-        type: 'papers' as const
-      }))
-    );
-  }
-
-  const results = await Promise.all(promises);
-  
-  const news = intent === 'papers' 
-    ? { results: [], query: keyword, timestamp: new Date().toISOString(), type: 'news' as const } 
-    : results[0];
-  const papers = intent === 'news' 
-    ? { results: [], query: keyword, timestamp: new Date().toISOString(), type: 'papers' as const } 
-    : results[intent === 'both' ? 1 : 0];
-
-  return { news, papers, intent };
 }
 
-// ============ 显式类型搜索 (绕过意图检测) ============
-
-export async function searchByType(
-  keyword: string, 
-  type: 'news' | 'papers'
-): Promise<SearchResponse> {
-  if (type === 'news') {
-    return searchNews(keyword);
-  } else {
+// 根据类型搜索
+export async function searchByType(keyword: string, type: 'news' | 'papers'): Promise<SearchResponse> {
+  if (type === 'papers') {
     return searchPapers(keyword);
   }
+  return searchNews(keyword);
 }
