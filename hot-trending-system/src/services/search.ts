@@ -335,7 +335,7 @@ async function fetchSemanticScholar(keyword: string): Promise<SearchResult[]> {
     }
   );
   
-  const responseData = response.data as { data: SemanticScholarPaper[] };
+  const responseData = response.data as unknown as { data: SemanticScholarPaper[] };
   const papers = responseData?.data || [];
   return papers.map((paper) => ({
     title: paper.title || '',
