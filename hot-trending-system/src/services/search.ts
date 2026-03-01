@@ -150,7 +150,7 @@ export async function searchNews(keyword: string): Promise<SearchResponse> {
   await throttleSerper();
   
   try {
-    const response = await axios.post<SerperResponse>(
+    const response = await axios.post<any>(
       SERPER_API_URL,
       {
         q: keyword,
@@ -335,7 +335,9 @@ async function fetchSemanticScholar(keyword: string): Promise<SearchResult[]> {
     }
   );
   
-  return (response.data?.data || []).map((paper: SemanticScholarPaper) => ({
+  const responseData = response.data as { data: SemanticScholarPaper[] };
+  const papers = responseData?.data || [];
+  return papers.map((paper) => ({
     title: paper.title || '',
     url: paper.externalIds?.DOI 
       ? `https://doi.org/${paper.externalIds.DOI}`

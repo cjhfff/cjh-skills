@@ -2,6 +2,7 @@
 
 > 实时更新 - 每次探索后记录
 
+| 2026-03-01 | Rust WebAssembly 浏览器高性能计算 | **工具链**: wasm-bindgen(JS绑定生成)、wasm-pack(打包发布)、cargo-generate(项目模板)。**内存模型**: Linear Memory(wasm32=4GB上限)、SharedArrayBuffer(多线程)、Transferable Objects(零拷贝)。**WebGPU集成**: wgpu(Rust实现)+wasm-bindgen→浏览器WebGPU，compute shader统一代码库跨平台。**最佳实践**: 1) size优化(wasm-opt、wee_alloc、strip debug)；2) 异步加载(WebAssembly.instantiateStreaming)；3) JS绑定最小化(避免频繁跨越边界)；4) 错误处理(Result→JS异常)。**适用场景**: CPU密集型计算(图像处理、密码学)、与WebGPU配合的GPGPU任务、需要Rust生态(serde、regex、nom)的浏览器应用 | ⭐⭐⭐⭐ |
 | 2026-02-27 | everything-claude-code | Claude Code 插件集合（53.6k stars，Anthropic Hackathon 获奖）：13+ agents（planner, architect, code-reviewer, security-reviewer 等）、48+ skills（各语言框架模式）、32+ commands（/plan, /pm2, /security-scan 等）、Hooks 自动记忆持久化。安装：1）`/plugin marketplace add affaan-m/everything-claude-code`；2）`/plugin install everything-claude-code@everything-claude-code`；3）克隆仓库后 `./install.sh typescript` 安装规则 | ⭐⭐⭐⭐⭐ |
 | 2026-02-26 | SHMUP Creator 弹幕游戏工具 | 1）**SHMUP Creator**：Steam 专业级射击游戏制作工具，无需编码，内置 Bullet Hell 弹幕编辑器；2）**QUOD**：64KB 极限开发案例，Quake-like 3D 射击游戏，包含完整关卡/敌人/音效/音乐 | ⭐⭐⭐ |
 
@@ -109,11 +110,35 @@
 - **配置**: `mcporter config add exa https://mcp.exa.ai/mcp`
 - **调用**: `mcporter call 'exa.web_search_exa(query: "...", numResults: 5)'`
 
-### tavily
-- **功能**: AI 优化的网络搜索，Tavily API
+### claude-cli-wrapper
+- **功能**: Claude Code CLI 包装器，实现真正的非交互式自动化调用
+- **调用**: `claude-cli -p "问题" [--max-turns N]`
+- **技术细节**: 
+  - 使用 `--dangerously-skip-permissions` 实现完全非交互
+  - 使用 `--no-session-persistence` 避免会话保存
+  - 底层调用 `~/.local/bin/claude` (真正的 Claude CLI)
+- **适用场景**: 在脚本/自动化中无交互地调用 Claude Code，CI/CD 管道集成
+- **安全隐患与最佳实践**:
+  - `--dangerously-skip-permissions` 会跳过所有权限确认，包括文件系统访问、命令执行等敏感操作
+  - **不要在不受信任的环境中使用**，任何获得该脚本访问权限的人都可以控制 Claude CLI
+  - **建议**: 仅在隔离环境（如 Docker 容器、CI/CD 管道）中使用，避免在生产服务器上直接运行
+  - **替代方案**: 如需交互式确认，移除 `--dangerously-skip-permissions` 参数，让 Claude 正常提示权限
+- **注意事项**: 
+  - 不是豆包平替，而是 Claude CLI 的包装器
+  - 需要本地已安装 Claude CLI (`~/.local/bin/claude`)
+  - `--dangerously-skip-permissions` 会跳过所有权限确认，谨慎使用
+
+### tavily-search
+- **功能**: AI 优化的网络搜索，Tavily API，专为 AI 代理设计的搜索结果
 - **调用**: `node {baseDir}/scripts/search.mjs "query"` 或带参数 `--deep`、`--topic news`
-- **配置**: `mcporter config add tavily https://tavily.com/mcp` 或 `TAVILY_API_KEY` 环境变量
-- **选项**: `-n <count>` 结果数、`--deep` 深度研究、`--topic news` 新闻搜索
+- **配置**: `TAVILY_API_KEY` 环境变量（从 https://tavily.com 获取）
+- **选项**: 
+  - `-n <count>`: 结果数（默认5，最大20）
+  - `--deep`: 深度研究模式（更慢但更全面）
+  - `--topic news`: 新闻搜索（限近期内容）
+  - `--days <n>`: 新闻搜索时限制天数
+- **提取内容**: `node {baseDir}/scripts/extract.mjs "URL"` 提取网页内容
+- **特点**: 搜索结果专为 AI 优化，返回简洁、相关的片段，适合代理使用
 
 ### gitload
 - **功能**: 从 GitHub 下载文件/文件夹/仓库，支持部分下载和私有仓库认证
@@ -143,9 +168,10 @@
 - **底层**: OpenCode（新项目）、Aider（现有项目）
 
 ### local-ollama-caller
-- **功能**: 基于知乎热门套路的言情短篇小说生成器
-- **触发词**: 「写言情」「写小说」「创作故事」
-- **参数**: -theme、-tone、-length
+- **功能**: 标准化调用本地 Ollama 模型的方法，适用于简单创意任务或节省成本
+- **调用**: `sessions_spawn(task="...", model="ollama/qwen2.5:7b")`
+- **最佳实践**: 让子代理直接读取文件（而非主会话读取后传递），节省上下文空间
+- **适用场景**: 用户明确要求使用 Ollama、简单创意任务、需要不同视角、节省 API 成本
 
 ### zhihu_publisher
 - **功能**: 将言情小说发布到知乎专栏

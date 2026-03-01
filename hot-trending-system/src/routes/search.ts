@@ -158,21 +158,21 @@ router.get('/stats', (req: Request, res: Response) => {
   try {
     // 总搜索次数
     const totalStmt = db.prepare('SELECT COUNT(*) as total FROM search_history');
-    const total = totalStmt.get();
+    const totalResult = totalStmt.get() as { total: number };
     
     // 今日搜索
     const todayStmt = db.prepare(`
       SELECT COUNT(*) as today FROM search_history
       WHERE date(created_at) = date('now')
     `);
-    const today = todayStmt.get();
+    const todayResult = todayStmt.get() as { today: number };
     
     // 本周搜索
     const weekStmt = db.prepare(`
       SELECT COUNT(*) as week FROM search_history
       WHERE created_at >= datetime('now', '-7 days')
     `);
-    const week = weekStmt.get();
+    const weekResult = weekStmt.get() as { week: number };
     
     // 热门意图
     const intentStmt = db.prepare(`
@@ -186,9 +186,9 @@ router.get('/stats', (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        total: total.total,
-        today: today.today,
-        week: week.week,
+        total: totalResult.total,
+        today: todayResult.today,
+        week: weekResult.week,
         intents,
       },
     });

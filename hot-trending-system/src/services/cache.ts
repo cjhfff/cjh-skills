@@ -47,7 +47,7 @@ class Cache {
     // 如果达到容量且是新增 key，删除最旧的条目
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey) { this.cache.delete(firstKey); }
     }
 
     const entry: CacheEntry<T> = {

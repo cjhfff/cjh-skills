@@ -1,0 +1,134 @@
+#!/bin/bash
+#
+# ai-dev-daily - 生成开发者实用 AI 日报
+# 关注：免费API、开源模型、实用工具、省钱资源
+#
+# Usage: ai-dev-daily [options]
+
+set -e
+
+# 获取脚本所在目录的绝对路径
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+
+NODE_SCRIPT="$SCRIPT_DIR/scripts/generate-daily.js"
+OUTPUT_DIR="${AI_DAILY_OUTPUT:-$HOME/.openclaw/workspace/memory}"
+
+# 帮助信息
+show_help() {
+    cat << 'EOF'
+ai-dev-daily - 开发者实用 AI 日报
+关注：免费API、开源模型、实用工具、省钱资源
+
+Usage:
+  ai-dev-daily [options]
+
+Options:
+  -s, --save          保存到文件（默认输出到控制台）
+  -o, --output DIR    指定输出目录
+  -t, --telegram      发送到 Telegram
+  -h, --help          显示帮助
+
+Examples:
+  # 生成并显示日报
+  ai-dev-daily
+
+  # 生成并保存到文件
+  ai-dev-daily --save
+
+  # 发送到 Telegram
+  ai-dev-daily --telegram
+
+Environment Variables:
+  AI_DAILY_OUTPUT     默认输出目录
+  TELEGRAM_BOT_TOKEN  Telegram Bot Token
+  TELEGRAM_CHAT_ID    Telegram Chat ID
+
+EOF
+}
+
+# 解析参数
+SAVE_TO_FILE=false
+SEND_TO_TELEGRAM=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--save)
+            SAVE_TO_FILE=true
+            shift
+            ;;
+        -o|--output)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        -t|--telegram)
+            SEND_TO_TELEGRAM=true
+            shift
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# 检查 Node.js
+if ! command -v node &> /dev/null; then
+    echo "Error: Node.js is required but not installed."
+    exit 1
+fi
+
+# 确保输出目录存在
+mkdir -p "$OUTPUT_DIR"
+
+# 设置环境变量
+export AI_DAILY_OUTPUT="$OUTPUT_DIR"
+
+# 生成日报
+echo "Generating AI Dev Daily..."
+echo ""
+
+if [ "$SAVE_TO_FILE" = true ]; then
+    # 保存到文件
+    node "$NODE_SCRIPT" > "$OUTPUT_DIR/ai-dev-daily-latest.md"
+    echo "✅ Saved to: $OUTPUT_DIR/ai-dev-daily-latest.md"
+else
+    # 输出到控制台
+    node "$NODE_SCRIPT"
+fi
+
+# 发送到 Telegram（如果启用）
+if [ "$SEND_TO_TELEGRAM" = true ]; then
+    if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+        echo "Error: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set."
+        exit 1
+    fi
+    
+    echo "Sending to Telegram..."
+    
+    # 读取生成的日报内容
+    DAILY_CONTENT=$(cat "$OUTPUT_DIR/ai-dev-daily-latest.md" 2>/dev/null || node "$NODE_SCRIPT")
+    
+    # 发送 Telegram 消息（简化版，可能需要调整格式）
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+        -d "chat_id=$TELEGRAM_CHAT_ID" \
+        -d "text=📰 AI Dev Daily - $(date +%Y-%m-%d)
+
+$DAILY_CONTENT" \
+        -d "parse_mode=Markdown" 2>/dev/null
+    
+    echo "✅ Sent to Telegram"
+fi
+
+echo ""
+echo "Done! 🎉"
